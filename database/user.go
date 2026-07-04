@@ -33,6 +33,9 @@ const (
 	GetMKWFriendInfoQuery    = `SELECT mariokartwii_friend_info FROM users WHERE profile_id = $1`
 	UpdateMKWFriendInfoQuery = `UPDATE users SET mariokartwii_friend_info = $2 WHERE profile_id = $1`
 	CountTotalUsersQuery     = `SELECT COUNT(DISTINCT csnum) FROM users`
+	GetMKWVRBRQuery          = `SELECT COALESCE(mariokartwii_vr, 0), COALESCE(mariokartwii_br, 0), (mariokartwii_vr IS NOT NULL AND mariokartwii_br IS NOT NULL) FROM users WHERE profile_id = $1`
+	GetMKWRawVRBRQuery       = `SELECT mariokartwii_vr, mariokartwii_br FROM users WHERE profile_id = $1`
+	UpdateMKWVRBRQuery       = `UPDATE users SET mariokartwii_vr = $2, mariokartwii_br = $3 WHERE profile_id = $1`
 )
 
 type LinkStage byte
@@ -69,6 +72,8 @@ type User struct {
 	BanReasonHidden string
 	BanIssued       *time.Time
 	BanExpires      *time.Time
+	VR              *int32
+	BR              *int32
 }
 
 var (
@@ -296,6 +301,36 @@ func UpdateMKWFriendInfo(pool *pgxpool.Pool, ctx context.Context, profileId uint
 	if err != nil {
 		panic(err)
 	}
+}
+
+func GetMKWVRBR(pool *pgxpool.Pool, ctx context.Context, profileId uint32) (int32, int32, bool) {
+	var vr int32
+	var br int32
+	var found bool
+
+	err := pool.QueryRow(ctx, GetMKWVRBRQuery, profileId).Scan(&vr, &br, &found)
+	if err != nil {
+		return 0, 0, false
+	}
+
+	return vr, br, found
+}
+
+func GetMKWRawVRBR(pool *pgxpool.Pool, ctx context.Context, profileId uint32) (*int32, *int32, error) {
+	var vr *int32
+	var br *int32
+
+	err := pool.QueryRow(ctx, GetMKWRawVRBRQuery, profileId).Scan(&vr, &br)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return vr, br, nil
+}
+
+func UpdateMKWVRBR(pool *pgxpool.Pool, ctx context.Context, profileId uint32, vr int32, br int32) error {
+	_, err := pool.Exec(ctx, UpdateMKWVRBRQuery, profileId, vr, br)
+	return err
 }
 
 // ScanUsers takes a query returning pids and collect the matching users
