@@ -73,7 +73,7 @@ func SendClientMessage(senderIP string, destSearchID uint64, message []byte) {
 			return
 		}
 
-		natnegID := binary.LittleEndian.Uint32(message[0x6:0xA])
+		natnegID := binary.BigEndian.Uint32(message[0x6:0xA])
 		moduleName = "QR2/MSG:s" + strconv.FormatUint(uint64(natnegID), 10)
 	} else if len(message) >= 4 && (bytes.Equal(message[:4], []byte{0xbb, 0x49, 0xcc, 0x4d}) || bytes.Equal(message[:4], []byte("SBCM"))) {
 		// DWC match command
