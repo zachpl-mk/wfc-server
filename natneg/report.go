@@ -10,7 +10,7 @@ import (
 )
 
 func (session *NATNEGSession) handleReport(conn net.PacketConn, addr net.Addr, buffer []byte, _moduleName string, version byte) {
-	if len(buffer) < 2 {
+	if len(buffer) < 9 {
 		logging.Error(_moduleName, "Invalid packet size")
 		return
 	}
@@ -18,7 +18,10 @@ func (session *NATNEGSession) handleReport(conn net.PacketConn, addr net.Addr, b
 	response := createPacketHeader(version, NNReportReply, session.Cookie)
 	response = append(response, buffer[:9]...)
 	response[14] = 0
-	conn.WriteTo(response, addr)
+	if _, err := conn.WriteTo(response, addr); err != nil {
+		logging.Warn(_moduleName, "Failed to send report ack:", aurora.Cyan(err))
+		return
+	}
 
 	// portType := buffer[0]
 	clientIndex := buffer[1]
@@ -31,16 +34,24 @@ func (session *NATNEGSession) handleReport(conn net.PacketConn, addr net.Addr, b
 	logging.Notice(moduleName, "Report from", aurora.BrightCyan(clientIndex), "result:", aurora.Cyan(result))
 
 	if client, exists := session.Clients[clientIndex]; exists {
-		client.Result[client.ConnectingIndex] = result
-		connecting := session.Clients[client.ConnectingIndex]
+		connectingIndex := client.ConnectingIndex
+		client.Result[connectingIndex] = result
+		connecting := session.Clients[connectingIndex]
 		client.ConnectingIndex = clientIndex
 		client.ConnectAck = false
+		client.RetryActive = false
 
-		if otherResult, hasResult := connecting.Result[clientIndex]; hasResult {
-			if otherResult != 1 {
-				result = otherResult
+		if connecting != nil {
+			connecting.RetryActive = false
+		}
+
+		if connecting != nil {
+			if otherResult, hasResult := connecting.Result[clientIndex]; hasResult {
+				if otherResult != 1 {
+					result = otherResult
+				}
+				qr2.ProcessNATNEGReport(result, client.ServerIP, connecting.ServerIP)
 			}
-			qr2.ProcessNATNEGReport(result, client.ServerIP, connecting.ServerIP)
 		}
 	}
 

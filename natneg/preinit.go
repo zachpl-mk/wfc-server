@@ -39,5 +39,7 @@ func (session *NATNEGSession) handlePreinit(conn net.PacketConn, addr net.Addr, 
 	packet := createPacketHeader(version, NNPreInitReply, session.Cookie)
 	buffer[1] = NNPreInitReady
 	packet = append(packet, buffer[:6]...)
-	conn.WriteTo(packet, addr)
+	if _, err := conn.WriteTo(packet, addr); err != nil {
+		logging.Warn(moduleName, "Failed to send preinit ack:", err)
+	}
 }

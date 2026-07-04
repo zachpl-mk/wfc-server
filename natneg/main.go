@@ -71,6 +71,7 @@ type NATNEGClient struct {
 	Index           byte
 	ConnectingIndex byte
 	ConnectAck      bool
+	RetryActive     bool
 	Result          map[byte]byte
 	NegotiateIP     string
 	LocalIP         string
@@ -325,7 +326,9 @@ func closeSession(moduleName string, session *NATNEGSession) {
 			panic(err)
 		}
 
-		natnegConn.WriteTo(reportAck, addr)
+		if _, err := natnegConn.WriteTo(reportAck, addr); err != nil {
+			logging.Warn(moduleName, "Failed to send disconnect report ack:", aurora.Cyan(err))
+		}
 	}
 
 	logging.Info("NATNEG", "Deleted session")
