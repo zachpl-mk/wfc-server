@@ -246,7 +246,8 @@ func handleConnection(conn net.PacketConn, addr net.Addr, buffer []byte) {
 		logging.Warn(moduleName, "Received server command:", aurora.Yellow("NN_INITACK"))
 
 	case NNErtTestRequest:
-		logging.Warn(moduleName, "Received server command:", aurora.Yellow("NN_ERTTEST"))
+		// logging.Info(moduleName, "Command:", aurora.Yellow("NN_ERTTEST"))
+		handleERTTest(conn, addr, buffer[12:], moduleName, version, cookie)
 
 	case NNErtTestReply:
 		logging.Info(moduleName, "Command:", aurora.Yellow("NN_ERTACK"))
@@ -271,7 +272,8 @@ func handleConnection(conn net.PacketConn, addr net.Addr, buffer []byte) {
 		logging.Warn(moduleName, "Received server command:", aurora.Yellow("NN_BACKUP_ACK"))
 
 	case NNAddressCheckRequest:
-		logging.Info(moduleName, "Command:", aurora.Yellow("NN_ADDRESS_CHECK"))
+		// logging.Info(moduleName, "Command:", aurora.Yellow("NN_ADDRESS_CHECK"))
+		handleAddressCheck(conn, addr, moduleName, version, cookie)
 
 	case NNAddressCheckReply:
 		logging.Warn(moduleName, "Received server command:", aurora.Yellow("NN_ADDRESS_REPLY"))
