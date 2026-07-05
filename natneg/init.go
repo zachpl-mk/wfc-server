@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"net"
+	"time"
 	"wwfc/common"
 	"wwfc/logging"
 
@@ -69,15 +70,22 @@ func (session *NATNEGSession) handleInit(conn net.PacketConn, addr net.Addr, buf
 			Index:           clientIndex,
 			ConnectingIndex: clientIndex,
 			Result:          map[byte]byte{},
+			PairResults:     map[byte]byte{},
 			NegotiateIP:     "",
 			LocalIP:         "",
 			ServerIP:        "",
 			GameName:        "",
+			NATType:         NATTypeUnknown,
+			MappingScheme:   NATMappingUnknown,
 		}
 		session.Clients[clientIndex] = sender
 	}
+	sender.normalize()
 
 	sender.GameName = gameName
+	sender.LastSeen = time.Now()
+	sender.LastPortType = portType
+	sender.UseGamePort = useGamePort
 
 	if portType != PortTypeGamePort {
 		sender.NegotiateIP = addr.String()
@@ -92,7 +100,7 @@ func (session *NATNEGSession) handleInit(conn net.PacketConn, addr net.Addr, buf
 	if !sender.isMapped() {
 		return
 	}
-	// logging.Info(moduleName, "Mapped", aurora.BrightCyan(sender.NegotiateIP), aurora.BrightCyan(sender.LocalIP), aurora.BrightCyan(sender.ServerIP))
+	logging.Notice(moduleName, "Mapped client", aurora.Cyan(clientIndex), "portType", aurora.Cyan(getPortTypeName(portType)), "public", aurora.BrightCyan(sender.ServerIP), "natneg", aurora.BrightCyan(sender.NegotiateIP), "private", aurora.BrightCyan(sender.LocalIP))
 
 	// Send the connect requests
 	session.sendConnectRequests(moduleName)
