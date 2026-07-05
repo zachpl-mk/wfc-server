@@ -16,6 +16,14 @@ import (
 	"gvisor.dev/gvisor/pkg/sleep"
 )
 
+const (
+	clientMessageDefaultRetryDelay = 1 * time.Second
+	clientMessageFastRetryDelay    = 250 * time.Millisecond
+	natnegCookieRetryDelay         = 150 * time.Millisecond
+	clientMessageMaxRetries        = 10
+	natnegCookieMaxRetries         = 24
+)
+
 func printHex(data []byte) string {
 	logMsg := ""
 	for i := 0; i < len(data); i++ {
@@ -257,7 +265,8 @@ func SendClientMessage(senderIP string, destSearchID uint64, message []byte) {
 
 	timeOutCount := 0
 	for {
-		time.AfterFunc(1*time.Second, func() {
+		retryDelay := getClientMessageRetryDelay(isNatnegPacket, matchData, timeOutCount)
+		time.AfterFunc(retryDelay, func() {
 			timeWaker.Assert()
 		})
 
@@ -271,8 +280,7 @@ func SendClientMessage(senderIP string, destSearchID uint64, message []byte) {
 		case &timeWaker:
 			timeOutCount++
 
-			// Enforce a 10 second timeout
-			if timeOutCount <= 10 {
+			if timeOutCount <= getClientMessageMaxRetries(isNatnegPacket) {
 				break
 			}
 
@@ -288,6 +296,28 @@ func SendClientMessage(senderIP string, destSearchID uint64, message []byte) {
 			return
 		}
 	}
+}
+
+func getClientMessageRetryDelay(isNatnegPacket bool, matchData common.MatchCommandData, retryCount int) time.Duration {
+	if isNatnegPacket {
+		return natnegCookieRetryDelay
+	}
+
+	switch matchData.Command {
+	case common.MatchReservation, common.MatchResvOK, common.MatchTellAddr:
+		if retryCount < 4 {
+			return clientMessageFastRetryDelay
+		}
+	}
+
+	return clientMessageDefaultRetryDelay
+}
+
+func getClientMessageMaxRetries(isNatnegPacket bool) int {
+	if isNatnegPacket {
+		return natnegCookieMaxRetries
+	}
+	return clientMessageMaxRetries
 }
 
 func processClientMessage(moduleName string, sender, receiver *Session, message []byte, isNatnegPacket bool, matchData common.MatchCommandData) (destSessionID uint32, packetCount uint32, destAddr net.UDPAddr) {

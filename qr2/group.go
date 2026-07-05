@@ -366,8 +366,15 @@ func ProcessNATNEGReport(result byte, ip1 string, ip2 string) {
 		resultString = "2"
 	}
 
-	session1.Data["+conn_"+session2.Data["+joinindex"]] = resultString
-	session2.Data["+conn_"+session1.Data["+joinindex"]] = resultString
+	session1ConnKey := "+conn_" + session2.Data["+joinindex"]
+	session2ConnKey := "+conn_" + session1.Data["+joinindex"]
+	if session1.Data[session1ConnKey] == resultString && session2.Data[session2ConnKey] == resultString {
+		logging.Info(moduleName, "Ignoring duplicate NATNEG result", aurora.Cyan(result), "for", aurora.BrightCyan(ip1), "<->", aurora.BrightCyan(ip2))
+		return
+	}
+
+	session1.Data[session1ConnKey] = resultString
+	session2.Data[session2ConnKey] = resultString
 
 	if result != 1 {
 		// Increment +conn_fail
