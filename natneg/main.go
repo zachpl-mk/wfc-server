@@ -17,10 +17,12 @@ import (
 )
 
 const (
-	SessionTTL          = 30 * time.Second
-	ConnectRetryDelay   = 250 * time.Millisecond
-	ConnectRetryLimit   = 24
-	ConnectPairDeadline = 7 * time.Second
+	SessionTTL            = 30 * time.Second
+	ConnectFastRetryDelay = 75 * time.Millisecond
+	ConnectRetryDelay     = 150 * time.Millisecond
+	ConnectRetryLimit     = 48
+	ConnectPairDeadline   = 10 * time.Second
+	ConnectInitialBurst   = 3
 
 	NNInitRequest         = 0x00
 	NNInitReply           = 0x01

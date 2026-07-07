@@ -92,10 +92,10 @@ func (session *NATNEGSession) runConnectPair(key uint16) {
 		session.mutex.Unlock()
 
 		if sendA {
-			a.sendConnectRequestPacket(natnegConn, b, version, pair.RetryCount)
+			a.sendConnectRequestPackets(natnegConn, b, version, pair.RetryCount)
 		}
 		if sendB {
-			b.sendConnectRequestPacket(natnegConn, a, version, pair.RetryCount)
+			b.sendConnectRequestPackets(natnegConn, a, version, pair.RetryCount)
 		}
 
 		time.Sleep(connectRetryDelay(pair.RetryCount))
@@ -103,10 +103,23 @@ func (session *NATNEGSession) runConnectPair(key uint16) {
 }
 
 func connectRetryDelay(retry int) time.Duration {
-	if retry <= 6 {
-		return 125 * time.Millisecond
+	if retry <= 12 {
+		return ConnectFastRetryDelay
 	}
 	return ConnectRetryDelay
+}
+
+func connectBurstCount(retry int) int {
+	if retry == 1 {
+		return ConnectInitialBurst
+	}
+	return 1
+}
+
+func (client *NATNEGClient) sendConnectRequestPackets(conn net.PacketConn, destination *NATNEGClient, version byte, retry int) {
+	for i := 0; i < connectBurstCount(retry); i++ {
+		client.sendConnectRequestPacket(conn, destination, version, retry)
+	}
 }
 
 func (client *NATNEGClient) sendConnectRequestPacket(conn net.PacketConn, destination *NATNEGClient, version byte, retry int) {
