@@ -23,6 +23,7 @@ const (
 	ConnectRetryLimit     = 48
 	ConnectPairDeadline   = 10 * time.Second
 	ConnectInitialBurst   = 3
+	ConnectPacketPace     = 10 * time.Millisecond
 
 	NNInitRequest         = 0x00
 	NNInitReply           = 0x01

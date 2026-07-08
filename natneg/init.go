@@ -102,6 +102,8 @@ func (session *NATNEGSession) handleInit(conn net.PacketConn, addr net.Addr, buf
 	}
 	logging.Notice(moduleName, "Mapped client", aurora.Cyan(clientIndex), "portType", aurora.Cyan(getPortTypeName(portType)), "public", aurora.BrightCyan(sender.ServerIP), "natneg", aurora.BrightCyan(sender.NegotiateIP), "private", aurora.BrightCyan(sender.LocalIP))
 
-	// Send the connect requests
+	// Wiimmfi paces packets to the same client so MKWii can process the
+	// init acknowledgement before receiving connect negotiation packets.
+	time.Sleep(ConnectPacketPace)
 	session.sendConnectRequests(moduleName)
 }
