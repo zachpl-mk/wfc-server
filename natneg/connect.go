@@ -117,8 +117,12 @@ func connectBurstCount(retry int) int {
 }
 
 func (client *NATNEGClient) sendConnectRequestPackets(conn net.PacketConn, destination *NATNEGClient, version byte, retry int) {
-	for i := 0; i < connectBurstCount(retry); i++ {
+	count := connectBurstCount(retry)
+	for i := 0; i < count; i++ {
 		client.sendConnectRequestPacket(conn, destination, version, retry)
+		if i+1 < count {
+			time.Sleep(ConnectPacketPace)
+		}
 	}
 }
 
