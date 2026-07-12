@@ -152,7 +152,10 @@ func (g *GameSpySession) handleWWFCReport(command common.GameSpyCommand) {
 			err := database.UpdateMKWVRBR(pool, ctx, g.User.ProfileId, vr, br)
 			if err != nil {
 				logging.Error(g.ModuleName, "Failed to persist", keyColored, "for", aurora.Cyan(g.User.ProfileId), ":", err)
+				continue
 			}
+
+			logging.Info(g.ModuleName, "Persisted", keyColored, "for", aurora.Cyan(g.User.ProfileId), "vr=", aurora.Cyan(vr), "br=", aurora.Cyan(br))
 
 		case "wl:mkw_mmr":
 			if g.GameName != "mariokartwii" {
@@ -169,7 +172,10 @@ func (g *GameSpySession) handleWWFCReport(command common.GameSpyCommand) {
 			err := database.UpdateMKWMMR(pool, ctx, g.User.ProfileId, mmr)
 			if err != nil {
 				logging.Error(g.ModuleName, "Failed to persist", keyColored, "for", aurora.Cyan(g.User.ProfileId), ":", err)
+				continue
 			}
+
+			logging.Info(g.ModuleName, "Persisted", keyColored, "for", aurora.Cyan(g.User.ProfileId), "mmr=", aurora.Cyan(mmr))
 
 		case "wl:mkw_mogi_start":
 			if g.GameName != "mariokartwii" || value != "1" {

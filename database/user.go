@@ -79,10 +79,11 @@ type User struct {
 }
 
 var (
-	ErrProfileIDInUse         = errors.New("profile ID is already in use")
-	ErrReservedProfileIDRange = errors.New("profile ID is in reserved range")
-	ErrFailedToGetMKWFriend   = errors.New("failed to get MKW friend info")
-	ErrCountHasNoRows         = errors.New("failed to count active users, result has no rows")
+	ErrProfileIDInUse           = errors.New("profile ID is already in use")
+	ErrReservedProfileIDRange   = errors.New("profile ID is in reserved range")
+	ErrFailedToGetMKWFriend     = errors.New("failed to get MKW friend info")
+	ErrCountHasNoRows           = errors.New("failed to count active users, result has no rows")
+	ErrMKWRatingProfileNotFound = errors.New("Mario Kart Wii rating profile was not found")
 )
 
 func (user *User) CreateUser(pool *pgxpool.Pool, ctx context.Context) error {
@@ -346,8 +347,14 @@ func GetMKWRawVRBR(pool *pgxpool.Pool, ctx context.Context, profileId uint32) (*
 }
 
 func UpdateMKWVRBR(pool *pgxpool.Pool, ctx context.Context, profileId uint32, vr int32, br int32) error {
-	_, err := pool.Exec(ctx, UpdateMKWVRBRQuery, profileId, vr, br)
-	return err
+	result, err := pool.Exec(ctx, UpdateMKWVRBRQuery, profileId, vr, br)
+	if err != nil {
+		return err
+	}
+	if result.RowsAffected() != 1 {
+		return ErrMKWRatingProfileNotFound
+	}
+	return nil
 }
 
 func GetMKWMMR(pool *pgxpool.Pool, ctx context.Context, profileId uint32) (int32, bool) {
@@ -363,8 +370,14 @@ func GetMKWMMR(pool *pgxpool.Pool, ctx context.Context, profileId uint32) (int32
 }
 
 func UpdateMKWMMR(pool *pgxpool.Pool, ctx context.Context, profileId uint32, mmr int32) error {
-	_, err := pool.Exec(ctx, UpdateMKWMMRQuery, profileId, mmr)
-	return err
+	result, err := pool.Exec(ctx, UpdateMKWMMRQuery, profileId, mmr)
+	if err != nil {
+		return err
+	}
+	if result.RowsAffected() != 1 {
+		return ErrMKWRatingProfileNotFound
+	}
+	return nil
 }
 
 // ScanUsers takes a query returning pids and collect the matching users

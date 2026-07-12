@@ -27,3 +27,19 @@ func TestCreateGameSpyMessage(t *testing.T) {
 		},
 	}))
 }
+
+func TestParseRepeatedWWFCReports(t *testing.T) {
+	commands, err := ParseGameSpyMessage(`\wl:report\\wl:mkw_vrbr\vr=12345|br=6789\final\\wl:report\\wl:mkw_mmr\mmr=1000\final\`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(commands) != 2 {
+		t.Fatalf("parsed %d commands, want 2", len(commands))
+	}
+	if commands[0].Command != "wl:report" || commands[0].OtherValues["wl:mkw_vrbr"] != "vr=12345|br=6789" {
+		t.Fatalf("unexpected VR/BR report: %#v", commands[0])
+	}
+	if commands[1].Command != "wl:report" || commands[1].OtherValues["wl:mkw_mmr"] != "mmr=1000" {
+		t.Fatalf("unexpected MMR report: %#v", commands[1])
+	}
+}
