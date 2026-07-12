@@ -499,6 +499,32 @@ func (g *Group) updateMatchType() {
 	g.MatchType = g.server.Data["dwc_mtype"]
 }
 
+func (g *Group) playerCount() int {
+	count := 0
+	for session := range g.players {
+		localPlayers, err := strconv.Atoi(session.Data["+localplayers"])
+		if err != nil || localPlayers < 1 {
+			localPlayers = 1
+		}
+		count += localPlayers
+	}
+	return count
+}
+
+func (g *Group) keepMogiRoomOpen() bool {
+	return g.MKWRegion == "vs_22" && !g.MogiStarted && g.playerCount() < 12
+}
+
+func (g *Group) updateMogiClosed(session *Session) {
+	if g.MKWRegion != "vs_22" || g.MogiStarted || g.server != session {
+		return
+	}
+	if session.Data["dwc_suspend"] == "1" {
+		g.MogiStarted = true
+		logging.Notice("QR2:Mogi", "Mogi room closed in group", aurora.Cyan(g.GroupName))
+	}
+}
+
 func MarkMKWMogiStarted(profileId uint32) {
 	mutex.Lock()
 	defer mutex.Unlock()

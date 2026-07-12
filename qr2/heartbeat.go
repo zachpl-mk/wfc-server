@@ -126,13 +126,15 @@ func heartbeat(moduleName string, conn net.PacketConn, addr net.UDPAddr, buffer 
 	}
 
 	mutex.Lock()
-	if session.groupPointer != nil {
-		if session.groupPointer.server == nil {
-			session.groupPointer.findNewServer()
+	sessionPtr := sessions[lookupAddr]
+	if sessionPtr != nil && sessionPtr.groupPointer != nil {
+		if sessionPtr.groupPointer.server == nil {
+			sessionPtr.groupPointer.findNewServer()
 		} else {
 			// Update the match type if needed
-			session.groupPointer.updateMatchType()
+			sessionPtr.groupPointer.updateMatchType()
 		}
+		sessionPtr.groupPointer.updateMogiClosed(sessionPtr)
 	}
 	mutex.Unlock()
 }

@@ -294,6 +294,9 @@ func GetSessionServers() []map[string]string {
 		} else {
 			serverData["rr_mogi_started"] = "0"
 		}
+		if session.groupPointer != nil && session.groupPointer.keepMogiRoomOpen() {
+			serverData["dwc_suspend"] = "0"
+		}
 		servers = append(servers, serverData)
 
 		if session.groupPointer == nil || len(session.groupPointer.players) == 0 {
