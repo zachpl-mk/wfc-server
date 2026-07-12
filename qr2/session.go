@@ -288,7 +288,13 @@ func GetSessionServers() []map[string]string {
 		// Clone session data to avoid overwriting the value stored for the
 		// actual player. Only reporting an average in the serverbrowser,
 		// rather than modifying any actual data
-		servers = append(servers, maps.Clone(session.Data))
+		serverData := maps.Clone(session.Data)
+		if session.groupPointer != nil && session.groupPointer.MogiStarted {
+			serverData["rr_mogi_started"] = "1"
+		} else {
+			serverData["rr_mogi_started"] = "0"
+		}
+		servers = append(servers, serverData)
 
 		if session.groupPointer == nil || len(session.groupPointer.players) == 0 {
 			continue
