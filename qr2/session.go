@@ -300,6 +300,7 @@ func GetSessionServers() []map[string]string {
 
 		totalEv := 0
 		totalEb := 0
+		totalEm := 0
 		for pSession := range session.groupPointer.players {
 			ev, err := strconv.Atoi(pSession.Data["ev"])
 			if err == nil {
@@ -310,12 +311,20 @@ func GetSessionServers() []map[string]string {
 			if err == nil {
 				totalEb += eb
 			}
+
+			em, err := strconv.Atoi(pSession.Data["em"])
+			if err == nil {
+				totalEm += em
+			}
 		}
 
 		// Overwrite the old data field in the server
 		pLen := len(session.groupPointer.players)
 		servers[len(servers)-1]["ev"] = strconv.Itoa(totalEv / pLen)
 		servers[len(servers)-1]["eb"] = strconv.Itoa(totalEb / pLen)
+		if totalEm > 0 {
+			servers[len(servers)-1]["em"] = strconv.Itoa(totalEm / pLen)
+		}
 	}
 
 	// Remove unreachable sessions

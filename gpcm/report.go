@@ -44,6 +44,20 @@ func parseMKWVRBRRecord(value string) (int32, int32, bool) {
 	return int32(vr), int32(br), true
 }
 
+func parseMKWMMRRecord(value string) (int32, bool) {
+	parts := strings.Split(value, "=")
+	if len(parts) != 2 || parts[0] != "mmr" {
+		return 0, false
+	}
+
+	mmr, err := strconv.ParseInt(parts[1], 10, 32)
+	if err != nil || mmr < 1000 || mmr > 30000 {
+		return 0, false
+	}
+
+	return int32(mmr), true
+}
+
 func (g *GameSpySession) handleWWFCReport(command common.GameSpyCommand) {
 	for key, value := range command.OtherValues {
 		logging.Info(g.ModuleName, "WiiLink Report:", aurora.Yellow(key))
@@ -139,6 +153,31 @@ func (g *GameSpySession) handleWWFCReport(command common.GameSpyCommand) {
 			if err != nil {
 				logging.Error(g.ModuleName, "Failed to persist", keyColored, "for", aurora.Cyan(g.User.ProfileId), ":", err)
 			}
+
+		case "wl:mkw_mmr":
+			if g.GameName != "mariokartwii" {
+				logging.Warn(g.ModuleName, "Ignoring", keyColored+":", "from wrong game")
+				continue
+			}
+
+			mmr, ok := parseMKWMMRRecord(value)
+			if !ok {
+				logging.Error(g.ModuleName, "Invalid", keyColored, "record:", aurora.Cyan(value))
+				continue
+			}
+
+			err := database.UpdateMKWMMR(pool, ctx, g.User.ProfileId, mmr)
+			if err != nil {
+				logging.Error(g.ModuleName, "Failed to persist", keyColored, "for", aurora.Cyan(g.User.ProfileId), ":", err)
+			}
+
+		case "wl:mkw_mogi_start":
+			if g.GameName != "mariokartwii" || value != "1" {
+				logging.Warn(g.ModuleName, "Ignoring invalid", keyColored)
+				continue
+			}
+
+			qr2.MarkMKWMogiStarted(g.User.ProfileId)
 		}
 	}
 }

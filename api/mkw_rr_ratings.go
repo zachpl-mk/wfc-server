@@ -12,6 +12,7 @@ type MKWRatingResponse struct {
 	Found int32 `json:"found"`
 	VR    int32 `json:"vr"`
 	BR    int32 `json:"br"`
+	MMR   int32 `json:"mmr"`
 }
 
 func HandleMKWRatings(w http.ResponseWriter, r *http.Request) {
@@ -40,15 +41,22 @@ func HandleMKWRatings(w http.ResponseWriter, r *http.Request) {
 	}
 
 	vr, br, found := database.GetMKWVRBR(pool, ctx, uint32(pid64))
+	mmr, mmrFound := database.GetMKWMMR(pool, ctx, uint32(pid64))
 	response := MKWRatingResponse{
 		Found: 0,
 		VR:    0,
 		BR:    0,
+		MMR:   0,
+	}
+	if found || mmrFound {
+		response.Found = 1
 	}
 	if found {
-		response.Found = 1
 		response.VR = vr
 		response.BR = br
+	}
+	if mmrFound {
+		response.MMR = mmr
 	}
 
 	jsonData, err := json.Marshal(response)

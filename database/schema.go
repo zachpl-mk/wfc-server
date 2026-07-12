@@ -28,7 +28,8 @@ func UpdateTables(pool *pgxpool.Pool, ctx context.Context) {
 
 	ALTER TABLE ONLY public.users
 		ADD IF NOT EXISTS mariokartwii_vr integer,
-		ADD IF NOT EXISTS mariokartwii_br integer;
+		ADD IF NOT EXISTS mariokartwii_br integer,
+		ADD IF NOT EXISTS mariokartwii_mmr integer;
 
 	`)
 

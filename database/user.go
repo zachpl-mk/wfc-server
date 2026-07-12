@@ -36,6 +36,8 @@ const (
 	GetMKWVRBRQuery          = `SELECT COALESCE(mariokartwii_vr, 0), COALESCE(mariokartwii_br, 0), (mariokartwii_vr IS NOT NULL AND mariokartwii_br IS NOT NULL) FROM users WHERE profile_id = $1`
 	GetMKWRawVRBRQuery       = `SELECT mariokartwii_vr, mariokartwii_br FROM users WHERE profile_id = $1`
 	UpdateMKWVRBRQuery       = `UPDATE users SET mariokartwii_vr = $2, mariokartwii_br = $3 WHERE profile_id = $1`
+	GetMKWMMRQuery           = `SELECT COALESCE(mariokartwii_mmr, 0), (mariokartwii_mmr IS NOT NULL) FROM users WHERE profile_id = $1`
+	UpdateMKWMMRQuery        = `UPDATE users SET mariokartwii_mmr = $2 WHERE profile_id = $1`
 )
 
 type LinkStage byte
@@ -345,6 +347,23 @@ func GetMKWRawVRBR(pool *pgxpool.Pool, ctx context.Context, profileId uint32) (*
 
 func UpdateMKWVRBR(pool *pgxpool.Pool, ctx context.Context, profileId uint32, vr int32, br int32) error {
 	_, err := pool.Exec(ctx, UpdateMKWVRBRQuery, profileId, vr, br)
+	return err
+}
+
+func GetMKWMMR(pool *pgxpool.Pool, ctx context.Context, profileId uint32) (int32, bool) {
+	var mmr int32
+	var found bool
+
+	err := pool.QueryRow(ctx, GetMKWMMRQuery, profileId).Scan(&mmr, &found)
+	if err != nil {
+		return 0, false
+	}
+
+	return mmr, found
+}
+
+func UpdateMKWMMR(pool *pgxpool.Pool, ctx context.Context, profileId uint32, mmr int32) error {
+	_, err := pool.Exec(ctx, UpdateMKWMMRQuery, profileId, mmr)
 	return err
 }
 

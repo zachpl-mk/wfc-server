@@ -157,12 +157,19 @@ func checkValidRating(moduleName string, payload map[string]string) string {
 				return "invalid_elo"
 			}
 		}
+		if em := payload["em"]; em != "" {
+			emInt, err := strconv.ParseInt(em, 10, 32)
+			if err != nil || emInt < 1000 || emInt > 30000 {
+				logging.Error(moduleName, "Invalid em value:", aurora.Cyan(em))
+				return "invalid_elo"
+			}
+		}
 	}
 	return "ok"
 }
 
 func isPublicMatchRegion(rk string) (bool, bool) {
-	if rk == "vs" {
+	if rk == "vs" || rk == "vs_22" {
 		return true, false
 	} else if rk == "bt" {
 		return true, true

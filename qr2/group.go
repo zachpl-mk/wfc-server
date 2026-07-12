@@ -51,6 +51,7 @@ type Group struct {
 	MKWRaceNumber    int
 	MKWCourseID      int
 	MKWEngineClassID int
+	MogiStarted      bool
 }
 
 var groups = map[string]*Group{}
@@ -113,6 +114,10 @@ func processResvOK(moduleName string, matchVersion int, reservation common.Match
 
 	// Keep group ID updated
 	group.GroupID = resvOK.GroupID
+	if group.MogiStarted && !group.players[destination] {
+		logging.Notice(moduleName, "Rejecting late Mogi join in group", aurora.Cyan(group.GroupName))
+		return false
+	}
 
 	// Set connecting
 	sender.Data["+conn_"+destination.Data["+joinindex"]] = "1"
@@ -492,6 +497,25 @@ func (g *Group) updateMatchType() {
 	}
 
 	g.MatchType = g.server.Data["dwc_mtype"]
+}
+
+func MarkMKWMogiStarted(profileId uint32) {
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	login := logins[profileId]
+	if login == nil || login.session == nil || login.session.groupPointer == nil {
+		return
+	}
+
+	group := login.session.groupPointer
+	if group.server != login.session {
+		return
+	}
+	group.MogiStarted = true
+	if group.server != nil {
+		group.server.Data["dwc_suspend"] = "1"
+	}
 }
 
 func ProcessMKWSelectRecord(profileId uint32, key string, value string) {
