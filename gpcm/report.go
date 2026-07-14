@@ -177,13 +177,6 @@ func (g *GameSpySession) handleWWFCReport(command common.GameSpyCommand) {
 
 			logging.Info(g.ModuleName, "Persisted", keyColored, "for", aurora.Cyan(g.User.ProfileId), "mmr=", aurora.Cyan(mmr))
 
-		case "wl:mkw_mogi_start":
-			if g.GameName != "mariokartwii" || value != "1" {
-				logging.Warn(g.ModuleName, "Ignoring invalid", keyColored)
-				continue
-			}
-
-			qr2.MarkMKWMogiStarted(g.User.ProfileId)
 		}
 	}
 }

@@ -51,7 +51,6 @@ type Group struct {
 	MKWRaceNumber    int
 	MKWCourseID      int
 	MKWEngineClassID int
-	MogiStarted      bool
 }
 
 var groups = map[string]*Group{}
@@ -114,10 +113,6 @@ func processResvOK(moduleName string, matchVersion int, reservation common.Match
 
 	// Keep group ID updated
 	group.GroupID = resvOK.GroupID
-	if group.MogiStarted && !group.players[destination] {
-		logging.Notice(moduleName, "Rejecting late Mogi join in group", aurora.Cyan(group.GroupName))
-		return false
-	}
 
 	// Set connecting
 	sender.Data["+conn_"+destination.Data["+joinindex"]] = "1"
@@ -497,51 +492,6 @@ func (g *Group) updateMatchType() {
 	}
 
 	g.MatchType = g.server.Data["dwc_mtype"]
-}
-
-func (g *Group) playerCount() int {
-	count := 0
-	for session := range g.players {
-		localPlayers, err := strconv.Atoi(session.Data["+localplayers"])
-		if err != nil || localPlayers < 1 {
-			localPlayers = 1
-		}
-		count += localPlayers
-	}
-	return count
-}
-
-func (g *Group) keepMogiRoomOpen() bool {
-	return g.MKWRegion == "vs_22" && !g.MogiStarted && g.playerCount() < 12
-}
-
-func (g *Group) updateMogiClosed(session *Session) {
-	if g.MKWRegion != "vs_22" || g.MogiStarted || g.server != session {
-		return
-	}
-	if session.Data["dwc_suspend"] == "1" {
-		g.MogiStarted = true
-		logging.Notice("QR2:Mogi", "Mogi room closed in group", aurora.Cyan(g.GroupName))
-	}
-}
-
-func MarkMKWMogiStarted(profileId uint32) {
-	mutex.Lock()
-	defer mutex.Unlock()
-
-	login := logins[profileId]
-	if login == nil || login.session == nil || login.session.groupPointer == nil {
-		return
-	}
-
-	group := login.session.groupPointer
-	if group.server != login.session {
-		return
-	}
-	group.MogiStarted = true
-	if group.server != nil {
-		group.server.Data["dwc_suspend"] = "1"
-	}
 }
 
 func ProcessMKWSelectRecord(profileId uint32, key string, value string) {

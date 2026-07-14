@@ -126,15 +126,13 @@ func heartbeat(moduleName string, conn net.PacketConn, addr net.UDPAddr, buffer 
 	}
 
 	mutex.Lock()
-	sessionPtr := sessions[lookupAddr]
-	if sessionPtr != nil && sessionPtr.groupPointer != nil {
-		if sessionPtr.groupPointer.server == nil {
-			sessionPtr.groupPointer.findNewServer()
+	if session.groupPointer != nil {
+		if session.groupPointer.server == nil {
+			session.groupPointer.findNewServer()
 		} else {
 			// Update the match type if needed
-			sessionPtr.groupPointer.updateMatchType()
+			session.groupPointer.updateMatchType()
 		}
-		sessionPtr.groupPointer.updateMogiClosed(sessionPtr)
 	}
 	mutex.Unlock()
 }
@@ -171,7 +169,7 @@ func checkValidRating(moduleName string, payload map[string]string) string {
 }
 
 func isPublicMatchRegion(rk string) (bool, bool) {
-	if rk == "vs" || rk == "vs_22" {
+	if rk == "vs" {
 		return true, false
 	} else if rk == "bt" {
 		return true, true
