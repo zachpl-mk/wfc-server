@@ -37,10 +37,6 @@ func filterServersInner(tree *filter.TreeNode, moduleName string, servers []map[
 			continue
 		}
 
-		if queryGame == "mariokartwii" && server["rk"] == "vs_22" && server["rr_mogi_started"] == "1" {
-			continue
-		}
-
 		if server["+deviceauth"] != "1" {
 			continue
 		}
