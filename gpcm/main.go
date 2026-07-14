@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"time"
 	"wwfc/common"
 	"wwfc/database"
 	"wwfc/logging"
@@ -126,21 +125,6 @@ func CloseConnection(index uint64) {
 	}
 
 	logging.Notice(session.ModuleName, "Connection closed")
-
-	ip, _ := common.IPFormatToInt(session.RemoteAddr)
-	kickInfo := []qr2.PIDIPPair{
-		{
-			PID: session.User.ProfileId,
-			IP:  uint32(ip),
-		},
-	}
-
-	// Defer by 3 seconds just in case!
-	go func() {
-		time.AfterFunc(3*time.Second, func() {
-			qr2.OrderKickFromGroups(kickInfo)
-		})
-	}()
 
 	if session.LoggedIn {
 		qr2.Logout(session.User.ProfileId)

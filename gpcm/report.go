@@ -51,7 +51,7 @@ func parseMKWMMRRecord(value string) (int32, bool) {
 	}
 
 	mmr, err := strconv.ParseInt(parts[1], 10, 32)
-	if err != nil || mmr < 1000 || mmr > 30000 {
+	if err != nil || mmr < 100 || mmr > 30000 {
 		return 0, false
 	}
 

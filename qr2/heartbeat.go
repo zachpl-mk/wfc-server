@@ -147,13 +147,13 @@ func checkValidRating(moduleName string, payload map[string]string) string {
 	if public, isBattle := isPublicMatchRegion(payload["rk"]); public {
 		// ev and eb values must be in range 1 to 9999
 		if ev := payload["ev"]; !isBattle && ev != "" {
-			evInt, err := strconv.ParseInt(ev, 10, 16)
+			evInt, err := strconv.ParseInt(ev, 10, 32)
 			if err != nil || evInt < 1 || evInt > 1_000_000 {
 				logging.Error(moduleName, "Invalid ev value:", aurora.Cyan(ev))
 				return "invalid_elo"
 			}
 		} else if eb := payload["eb"]; isBattle && eb != "" {
-			ebInt, err := strconv.ParseInt(eb, 10, 16)
+			ebInt, err := strconv.ParseInt(eb, 10, 32)
 			if err != nil || ebInt < 1 || ebInt > 1_000_000 {
 				logging.Error(moduleName, "Invalid eb value:", aurora.Cyan(eb))
 				return "invalid_elo"
@@ -161,7 +161,7 @@ func checkValidRating(moduleName string, payload map[string]string) string {
 		}
 		if em := payload["em"]; em != "" {
 			emInt, err := strconv.ParseInt(em, 10, 32)
-			if err != nil || emInt < 1000 || emInt > 30000 {
+			if err != nil || emInt < 100 || emInt > 30000 {
 				logging.Error(moduleName, "Invalid em value:", aurora.Cyan(em))
 				return "invalid_elo"
 			}
