@@ -12,11 +12,14 @@ const (
 	defaultMKWManualRating = 5000
 	minMKWManualRating     = 100
 	maxMKWManualRating     = 1000000
+	minMKWMMR              = 100
+	maxMKWMMR              = 30000
 )
 
 var (
-	ErrRatingType  = errors.New("rating type must be either 'vr' or 'br'")
+	ErrRatingType  = errors.New("rating type must be either 'vr', 'br', or 'mmr'")
 	ErrRatingValue = errors.New("rating value must be between 100 and 1000000")
+	ErrMMRValue    = errors.New("MMR value must be between 100 and 30000")
 )
 
 type SetMKWRatingRequest struct {
@@ -34,6 +37,7 @@ type SetMKWRatingResponse struct {
 	Value         int32         `json:"value"`
 	VR            int32         `json:"vr"`
 	BR            int32         `json:"br"`
+	MMR           int32         `json:"mmr"`
 	Success       bool          `json:"success"`
 	Error         string        `json:"error"`
 }
@@ -52,12 +56,22 @@ func handleSetMKWRatingImpl(req SetMKWRatingRequest) (SetMKWRatingResponse, int,
 		return SetMKWRatingResponse{}, http.StatusBadRequest, ErrPIDMissing
 	}
 
-	if req.Value < minMKWManualRating || req.Value > maxMKWManualRating {
+	ratingType := strings.ToLower(strings.TrimSpace(req.RatingType))
+	if ratingType != "vr" && ratingType != "br" && ratingType != "mmr" {
+		return SetMKWRatingResponse{}, http.StatusBadRequest, ErrRatingType
+	}
+
+	if ratingType == "mmr" {
+		if req.Value < minMKWMMR || req.Value > maxMKWMMR {
+			return SetMKWRatingResponse{}, http.StatusBadRequest, ErrMMRValue
+		}
+	} else if req.Value < minMKWManualRating || req.Value > maxMKWManualRating {
 		return SetMKWRatingResponse{}, http.StatusBadRequest, ErrRatingValue
 	}
 
 	currentVR := int32(defaultMKWManualRating)
 	currentBR := int32(defaultMKWManualRating)
+	currentMMR := int32(defaultMKWManualRating)
 
 	storedVR, storedBR, err := database.GetMKWRawVRBR(pool, ctx, req.ProfileID)
 	if err != nil {
@@ -72,7 +86,10 @@ func handleSetMKWRatingImpl(req SetMKWRatingRequest) (SetMKWRatingResponse, int,
 		currentBR = *storedBR
 	}
 
-	ratingType := strings.ToLower(req.RatingType)
+	if storedMMR, found := database.GetMKWMMR(pool, ctx, req.ProfileID); found {
+		currentMMR = storedMMR
+	}
+
 	reason := strings.TrimSpace(req.Reason)
 	previousValue := int32(0)
 
@@ -83,11 +100,18 @@ func handleSetMKWRatingImpl(req SetMKWRatingRequest) (SetMKWRatingResponse, int,
 	case "br":
 		previousValue = currentBR
 		currentBR = req.Value
-	default:
-		return SetMKWRatingResponse{}, http.StatusBadRequest, ErrRatingType
+	case "mmr":
+		previousValue = currentMMR
+		currentMMR = req.Value
 	}
 
-	if err := database.UpdateMKWVRBR(pool, ctx, req.ProfileID, currentVR, currentBR); err != nil {
+	var updateErr error
+	if ratingType == "mmr" {
+		updateErr = database.UpdateMKWMMR(pool, ctx, req.ProfileID, currentMMR)
+	} else {
+		updateErr = database.UpdateMKWVRBR(pool, ctx, req.ProfileID, currentVR, currentBR)
+	}
+	if updateErr != nil {
 		return SetMKWRatingResponse{}, http.StatusInternalServerError, ErrTransaction
 	}
 
@@ -96,9 +120,9 @@ func handleSetMKWRatingImpl(req SetMKWRatingRequest) (SetMKWRatingResponse, int,
 		return SetMKWRatingResponse{}, http.StatusInternalServerError, ErrUserQueryTransaction
 	}
 
-	kickReason := "Your VR/BR was updated."
+	kickReason := "Your " + strings.ToUpper(ratingType) + " was updated."
 	if reason != "" {
-		kickReason = "Your VR/BR was updated. - " + reason
+		kickReason += " - " + reason
 	}
 
 	err = gpcm.KickPlayer(req.ProfileID, kickReason, gpcm.WWFCMsgKickedCustom)
@@ -113,5 +137,6 @@ func handleSetMKWRatingImpl(req SetMKWRatingRequest) (SetMKWRatingResponse, int,
 		Value:         req.Value,
 		VR:            currentVR,
 		BR:            currentBR,
+		MMR:           currentMMR,
 	}, http.StatusOK, nil
 }
