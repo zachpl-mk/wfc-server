@@ -29,7 +29,20 @@ func UpdateTables(pool *pgxpool.Pool, ctx context.Context) {
 	ALTER TABLE ONLY public.users
 		ADD IF NOT EXISTS mariokartwii_vr integer,
 		ADD IF NOT EXISTS mariokartwii_br integer,
-		ADD IF NOT EXISTS mariokartwii_mmr integer;
+		ADD IF NOT EXISTS mariokartwii_mmr integer,
+		ADD IF NOT EXISTS mariokartwii_mmr_retro integer,
+		ADD IF NOT EXISTS mariokartwii_mmr_ct integer,
+		ADD IF NOT EXISTS mariokartwii_mmr_regular integer;
+
+	`)
+
+	pool.Exec(ctx, `
+
+	UPDATE public.users
+	SET mariokartwii_mmr_retro = COALESCE(mariokartwii_mmr_retro, mariokartwii_mmr),
+		mariokartwii_mmr_ct = COALESCE(mariokartwii_mmr_ct, mariokartwii_mmr),
+		mariokartwii_mmr_regular = COALESCE(mariokartwii_mmr_regular, mariokartwii_mmr)
+	WHERE mariokartwii_mmr IS NOT NULL;
 
 	`)
 

@@ -36,8 +36,11 @@ const (
 	GetMKWVRBRQuery          = `SELECT COALESCE(mariokartwii_vr, 0), COALESCE(mariokartwii_br, 0), (mariokartwii_vr IS NOT NULL AND mariokartwii_br IS NOT NULL) FROM users WHERE profile_id = $1`
 	GetMKWRawVRBRQuery       = `SELECT mariokartwii_vr, mariokartwii_br FROM users WHERE profile_id = $1`
 	UpdateMKWVRBRQuery       = `UPDATE users SET mariokartwii_vr = $2, mariokartwii_br = $3 WHERE profile_id = $1`
-	GetMKWMMRQuery           = `SELECT COALESCE(mariokartwii_mmr, 0), (mariokartwii_mmr IS NOT NULL) FROM users WHERE profile_id = $1`
-	UpdateMKWMMRQuery        = `UPDATE users SET mariokartwii_mmr = $2 WHERE profile_id = $1`
+	GetMKWMMRQuery           = `SELECT COALESCE(mariokartwii_mmr_retro, mariokartwii_mmr, 0), COALESCE(mariokartwii_mmr_ct, mariokartwii_mmr, 0), COALESCE(mariokartwii_mmr_regular, mariokartwii_mmr, 0), (mariokartwii_mmr_retro IS NOT NULL OR mariokartwii_mmr_ct IS NOT NULL OR mariokartwii_mmr_regular IS NOT NULL OR mariokartwii_mmr IS NOT NULL) FROM users WHERE profile_id = $1`
+	UpdateMKWMMRQuery        = `UPDATE users SET mariokartwii_mmr = $2, mariokartwii_mmr_retro = $2, mariokartwii_mmr_ct = $2, mariokartwii_mmr_regular = $2 WHERE profile_id = $1`
+	UpdateMKWMMRRetroQuery   = `UPDATE users SET mariokartwii_mmr_retro = $2 WHERE profile_id = $1`
+	UpdateMKWMMRCTQuery      = `UPDATE users SET mariokartwii_mmr_ct = $2 WHERE profile_id = $1`
+	UpdateMKWMMRRegularQuery = `UPDATE users SET mariokartwii_mmr_regular = $2 WHERE profile_id = $1`
 )
 
 type LinkStage byte
@@ -84,6 +87,7 @@ var (
 	ErrFailedToGetMKWFriend     = errors.New("failed to get MKW friend info")
 	ErrCountHasNoRows           = errors.New("failed to count active users, result has no rows")
 	ErrMKWRatingProfileNotFound = errors.New("Mario Kart Wii rating profile was not found")
+	ErrInvalidMKWMMRMode        = errors.New("invalid Mario Kart Wii MMR mode")
 )
 
 func (user *User) CreateUser(pool *pgxpool.Pool, ctx context.Context) error {
@@ -357,20 +361,27 @@ func UpdateMKWVRBR(pool *pgxpool.Pool, ctx context.Context, profileId uint32, vr
 	return nil
 }
 
-func GetMKWMMR(pool *pgxpool.Pool, ctx context.Context, profileId uint32) (int32, bool) {
-	var mmr int32
+func GetMKWMMRs(pool *pgxpool.Pool, ctx context.Context, profileId uint32) (int32, int32, int32, bool) {
+	var retro int32
+	var ct int32
+	var regular int32
 	var found bool
 
-	err := pool.QueryRow(ctx, GetMKWMMRQuery, profileId).Scan(&mmr, &found)
+	err := pool.QueryRow(ctx, GetMKWMMRQuery, profileId).Scan(&retro, &ct, &regular, &found)
 	if err != nil {
-		return 0, false
+		return 0, 0, 0, false
 	}
 
-	return mmr, found
+	return retro, ct, regular, found
 }
 
-func UpdateMKWMMR(pool *pgxpool.Pool, ctx context.Context, profileId uint32, mmr int32) error {
-	result, err := pool.Exec(ctx, UpdateMKWMMRQuery, profileId, mmr)
+func GetMKWMMR(pool *pgxpool.Pool, ctx context.Context, profileId uint32) (int32, bool) {
+	retro, _, _, found := GetMKWMMRs(pool, ctx, profileId)
+	return retro, found
+}
+
+func updateMKWMMRQuery(pool *pgxpool.Pool, ctx context.Context, query string, profileId uint32, mmr int32) error {
+	result, err := pool.Exec(ctx, query, profileId, mmr)
 	if err != nil {
 		return err
 	}
@@ -378,6 +389,25 @@ func UpdateMKWMMR(pool *pgxpool.Pool, ctx context.Context, profileId uint32, mmr
 		return ErrMKWRatingProfileNotFound
 	}
 	return nil
+}
+
+func UpdateMKWMMR(pool *pgxpool.Pool, ctx context.Context, profileId uint32, mmr int32) error {
+	return updateMKWMMRQuery(pool, ctx, UpdateMKWMMRQuery, profileId, mmr)
+}
+
+func UpdateMKWMMRMode(pool *pgxpool.Pool, ctx context.Context, profileId uint32, mode string, mmr int32) error {
+	query := ""
+	switch mode {
+	case "retro":
+		query = UpdateMKWMMRRetroQuery
+	case "ct":
+		query = UpdateMKWMMRCTQuery
+	case "regular":
+		query = UpdateMKWMMRRegularQuery
+	default:
+		return ErrInvalidMKWMMRMode
+	}
+	return updateMKWMMRQuery(pool, ctx, query, profileId, mmr)
 }
 
 // ScanUsers takes a query returning pids and collect the matching users

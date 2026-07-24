@@ -44,18 +44,37 @@ func parseMKWVRBRRecord(value string) (int32, int32, bool) {
 	return int32(vr), int32(br), true
 }
 
-func parseMKWMMRRecord(value string) (int32, bool) {
-	parts := strings.Split(value, "=")
-	if len(parts) != 2 || parts[0] != "mmr" {
-		return 0, false
+func parseMKWMMRRecord(value string) (string, int32, bool) {
+	mode := ""
+	mmr := int64(-1)
+	for _, part := range strings.Split(value, "|") {
+		keyValue := strings.SplitN(part, "=", 2)
+		if len(keyValue) != 2 {
+			return "", 0, false
+		}
+
+		switch keyValue[0] {
+		case "mode":
+			if keyValue[1] != "retro" && keyValue[1] != "ct" && keyValue[1] != "regular" {
+				return "", 0, false
+			}
+			mode = keyValue[1]
+		case "mmr":
+			parsed, err := strconv.ParseInt(keyValue[1], 10, 32)
+			if err != nil || parsed < 100 || parsed > 30000 {
+				return "", 0, false
+			}
+			mmr = parsed
+		default:
+			return "", 0, false
+		}
 	}
 
-	mmr, err := strconv.ParseInt(parts[1], 10, 32)
-	if err != nil || mmr < 100 || mmr > 30000 {
-		return 0, false
+	if mmr < 0 {
+		return "", 0, false
 	}
 
-	return int32(mmr), true
+	return mode, int32(mmr), true
 }
 
 func (g *GameSpySession) handleWWFCReport(command common.GameSpyCommand) {
@@ -163,19 +182,28 @@ func (g *GameSpySession) handleWWFCReport(command common.GameSpyCommand) {
 				continue
 			}
 
-			mmr, ok := parseMKWMMRRecord(value)
+			mode, mmr, ok := parseMKWMMRRecord(value)
 			if !ok {
 				logging.Error(g.ModuleName, "Invalid", keyColored, "record:", aurora.Cyan(value))
 				continue
 			}
 
-			err := database.UpdateMKWMMR(pool, ctx, g.User.ProfileId, mmr)
+			var err error
+			if mode == "" {
+				err = database.UpdateMKWMMR(pool, ctx, g.User.ProfileId, mmr)
+			} else {
+				err = database.UpdateMKWMMRMode(pool, ctx, g.User.ProfileId, mode, mmr)
+			}
 			if err != nil {
 				logging.Error(g.ModuleName, "Failed to persist", keyColored, "for", aurora.Cyan(g.User.ProfileId), ":", err)
 				continue
 			}
 
-			logging.Info(g.ModuleName, "Persisted", keyColored, "for", aurora.Cyan(g.User.ProfileId), "mmr=", aurora.Cyan(mmr))
+			if mode == "" {
+				logging.Info(g.ModuleName, "Persisted", keyColored, "for", aurora.Cyan(g.User.ProfileId), "mmr=", aurora.Cyan(mmr))
+			} else {
+				logging.Info(g.ModuleName, "Persisted", keyColored, "for", aurora.Cyan(g.User.ProfileId), "mode=", aurora.Cyan(mode), "mmr=", aurora.Cyan(mmr))
+			}
 
 		}
 	}

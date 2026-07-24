@@ -17,7 +17,7 @@ const (
 )
 
 var (
-	ErrRatingType  = errors.New("rating type must be either 'vr', 'br', or 'mmr'")
+	ErrRatingType  = errors.New("rating type must be either 'vr', 'br', 'mmr', 'mmr_retro', 'mmr_ct', or 'mmr_regular'")
 	ErrRatingValue = errors.New("rating value must be between 100 and 1000000")
 	ErrMMRValue    = errors.New("MMR value must be between 100 and 30000")
 )
@@ -38,6 +38,9 @@ type SetMKWRatingResponse struct {
 	VR            int32         `json:"vr"`
 	BR            int32         `json:"br"`
 	MMR           int32         `json:"mmr"`
+	MMRRetro      int32         `json:"mmr_retro"`
+	MMRCT         int32         `json:"mmr_ct"`
+	MMRRegular    int32         `json:"mmr_regular"`
 	Success       bool          `json:"success"`
 	Error         string        `json:"error"`
 }
@@ -57,11 +60,12 @@ func handleSetMKWRatingImpl(req SetMKWRatingRequest) (SetMKWRatingResponse, int,
 	}
 
 	ratingType := strings.ToLower(strings.TrimSpace(req.RatingType))
-	if ratingType != "vr" && ratingType != "br" && ratingType != "mmr" {
+	if ratingType != "vr" && ratingType != "br" && ratingType != "mmr" &&
+		ratingType != "mmr_retro" && ratingType != "mmr_ct" && ratingType != "mmr_regular" {
 		return SetMKWRatingResponse{}, http.StatusBadRequest, ErrRatingType
 	}
 
-	if ratingType == "mmr" {
+	if ratingType == "mmr" || strings.HasPrefix(ratingType, "mmr_") {
 		if req.Value < minMKWMMR || req.Value > maxMKWMMR {
 			return SetMKWRatingResponse{}, http.StatusBadRequest, ErrMMRValue
 		}
@@ -71,7 +75,9 @@ func handleSetMKWRatingImpl(req SetMKWRatingRequest) (SetMKWRatingResponse, int,
 
 	currentVR := int32(defaultMKWManualRating)
 	currentBR := int32(defaultMKWManualRating)
-	currentMMR := int32(defaultMKWManualRating)
+	currentMMRRetro := int32(defaultMKWManualRating)
+	currentMMRCT := int32(defaultMKWManualRating)
+	currentMMRRegular := int32(defaultMKWManualRating)
 
 	storedVR, storedBR, err := database.GetMKWRawVRBR(pool, ctx, req.ProfileID)
 	if err != nil {
@@ -86,8 +92,10 @@ func handleSetMKWRatingImpl(req SetMKWRatingRequest) (SetMKWRatingResponse, int,
 		currentBR = *storedBR
 	}
 
-	if storedMMR, found := database.GetMKWMMR(pool, ctx, req.ProfileID); found {
-		currentMMR = storedMMR
+	if storedRetro, storedCT, storedRegular, found := database.GetMKWMMRs(pool, ctx, req.ProfileID); found {
+		currentMMRRetro = storedRetro
+		currentMMRCT = storedCT
+		currentMMRRegular = storedRegular
 	}
 
 	reason := strings.TrimSpace(req.Reason)
@@ -101,13 +109,26 @@ func handleSetMKWRatingImpl(req SetMKWRatingRequest) (SetMKWRatingResponse, int,
 		previousValue = currentBR
 		currentBR = req.Value
 	case "mmr":
-		previousValue = currentMMR
-		currentMMR = req.Value
+		previousValue = currentMMRRetro
+		currentMMRRetro = req.Value
+		currentMMRCT = req.Value
+		currentMMRRegular = req.Value
+	case "mmr_retro":
+		previousValue = currentMMRRetro
+		currentMMRRetro = req.Value
+	case "mmr_ct":
+		previousValue = currentMMRCT
+		currentMMRCT = req.Value
+	case "mmr_regular":
+		previousValue = currentMMRRegular
+		currentMMRRegular = req.Value
 	}
 
 	var updateErr error
 	if ratingType == "mmr" {
-		updateErr = database.UpdateMKWMMR(pool, ctx, req.ProfileID, currentMMR)
+		updateErr = database.UpdateMKWMMR(pool, ctx, req.ProfileID, req.Value)
+	} else if strings.HasPrefix(ratingType, "mmr_") {
+		updateErr = database.UpdateMKWMMRMode(pool, ctx, req.ProfileID, strings.TrimPrefix(ratingType, "mmr_"), req.Value)
 	} else {
 		updateErr = database.UpdateMKWVRBR(pool, ctx, req.ProfileID, currentVR, currentBR)
 	}
@@ -130,6 +151,13 @@ func handleSetMKWRatingImpl(req SetMKWRatingRequest) (SetMKWRatingResponse, int,
 		return SetMKWRatingResponse{}, http.StatusInternalServerError, err
 	}
 
+	mmrResponseValue := currentMMRRetro
+	if ratingType == "mmr_ct" {
+		mmrResponseValue = currentMMRCT
+	} else if ratingType == "mmr_regular" {
+		mmrResponseValue = currentMMRRegular
+	}
+
 	return SetMKWRatingResponse{
 		User:          user,
 		RatingType:    ratingType,
@@ -137,6 +165,9 @@ func handleSetMKWRatingImpl(req SetMKWRatingRequest) (SetMKWRatingResponse, int,
 		Value:         req.Value,
 		VR:            currentVR,
 		BR:            currentBR,
-		MMR:           currentMMR,
+		MMR:           mmrResponseValue,
+		MMRRetro:      currentMMRRetro,
+		MMRCT:         currentMMRCT,
+		MMRRegular:    currentMMRRegular,
 	}, http.StatusOK, nil
 }

@@ -9,10 +9,13 @@ import (
 )
 
 type MKWRatingResponse struct {
-	Found int32 `json:"found"`
-	VR    int32 `json:"vr"`
-	BR    int32 `json:"br"`
-	MMR   int32 `json:"mmr"`
+	Found      int32 `json:"found"`
+	VR         int32 `json:"vr"`
+	BR         int32 `json:"br"`
+	MMR        int32 `json:"mmr"`
+	MMRRetro   int32 `json:"mmr_retro"`
+	MMRCT      int32 `json:"mmr_ct"`
+	MMRRegular int32 `json:"mmr_regular"`
 }
 
 func HandleMKWRatings(w http.ResponseWriter, r *http.Request) {
@@ -41,12 +44,15 @@ func HandleMKWRatings(w http.ResponseWriter, r *http.Request) {
 	}
 
 	vr, br, found := database.GetMKWVRBR(pool, ctx, uint32(pid64))
-	mmr, mmrFound := database.GetMKWMMR(pool, ctx, uint32(pid64))
+	mmrRetro, mmrCT, mmrRegular, mmrFound := database.GetMKWMMRs(pool, ctx, uint32(pid64))
 	response := MKWRatingResponse{
-		Found: 0,
-		VR:    0,
-		BR:    0,
-		MMR:   0,
+		Found:      0,
+		VR:         0,
+		BR:         0,
+		MMR:        0,
+		MMRRetro:   0,
+		MMRCT:      0,
+		MMRRegular: 0,
 	}
 	if found || mmrFound {
 		response.Found = 1
@@ -56,7 +62,10 @@ func HandleMKWRatings(w http.ResponseWriter, r *http.Request) {
 		response.BR = br
 	}
 	if mmrFound {
-		response.MMR = mmr
+		response.MMR = mmrRetro
+		response.MMRRetro = mmrRetro
+		response.MMRCT = mmrCT
+		response.MMRRegular = mmrRegular
 	}
 
 	jsonData, err := json.Marshal(response)
