@@ -140,7 +140,11 @@ func handleSetMKWRatingImpl(req SetMKWRatingRequest) (SetMKWRatingResponse, int,
 		return SetMKWRatingResponse{}, http.StatusInternalServerError, ErrUserQueryTransaction
 	}
 
-	kickReason := "Your " + strings.ToUpper(ratingType) + " was updated."
+	ratingLabel := strings.ToUpper(ratingType)
+	if strings.HasPrefix(ratingType, "mmr_") {
+		ratingLabel = "MMR"
+	}
+	kickReason := "Your " + ratingLabel + " was updated."
 	if reason != "" {
 		kickReason += " - " + reason
 	}
