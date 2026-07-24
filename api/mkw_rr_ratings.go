@@ -12,7 +12,6 @@ type MKWRatingResponse struct {
 	Found      int32 `json:"found"`
 	VR         int32 `json:"vr"`
 	BR         int32 `json:"br"`
-	MMR        int32 `json:"mmr"`
 	MMRRetro   int32 `json:"mmr_retro"`
 	MMRCT      int32 `json:"mmr_ct"`
 	MMRRegular int32 `json:"mmr_regular"`
@@ -49,7 +48,6 @@ func HandleMKWRatings(w http.ResponseWriter, r *http.Request) {
 		Found:      0,
 		VR:         0,
 		BR:         0,
-		MMR:        0,
 		MMRRetro:   0,
 		MMRCT:      0,
 		MMRRegular: 0,
@@ -62,7 +60,6 @@ func HandleMKWRatings(w http.ResponseWriter, r *http.Request) {
 		response.BR = br
 	}
 	if mmrFound {
-		response.MMR = mmrRetro
 		response.MMRRetro = mmrRetro
 		response.MMRCT = mmrCT
 		response.MMRRegular = mmrRegular

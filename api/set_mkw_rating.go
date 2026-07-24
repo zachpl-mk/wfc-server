@@ -37,7 +37,6 @@ type SetMKWRatingResponse struct {
 	Value         int32         `json:"value"`
 	VR            int32         `json:"vr"`
 	BR            int32         `json:"br"`
-	MMR           int32         `json:"mmr"`
 	MMRRetro      int32         `json:"mmr_retro"`
 	MMRCT         int32         `json:"mmr_ct"`
 	MMRRegular    int32         `json:"mmr_regular"`
@@ -151,13 +150,6 @@ func handleSetMKWRatingImpl(req SetMKWRatingRequest) (SetMKWRatingResponse, int,
 		return SetMKWRatingResponse{}, http.StatusInternalServerError, err
 	}
 
-	mmrResponseValue := currentMMRRetro
-	if ratingType == "mmr_ct" {
-		mmrResponseValue = currentMMRCT
-	} else if ratingType == "mmr_regular" {
-		mmrResponseValue = currentMMRRegular
-	}
-
 	return SetMKWRatingResponse{
 		User:          user,
 		RatingType:    ratingType,
@@ -165,7 +157,6 @@ func handleSetMKWRatingImpl(req SetMKWRatingRequest) (SetMKWRatingResponse, int,
 		Value:         req.Value,
 		VR:            currentVR,
 		BR:            currentBR,
-		MMR:           mmrResponseValue,
 		MMRRetro:      currentMMRRetro,
 		MMRCT:         currentMMRCT,
 		MMRRegular:    currentMMRRegular,
