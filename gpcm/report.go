@@ -55,7 +55,7 @@ func parseMKWMMRRecord(value string) (string, int32, bool) {
 
 		switch keyValue[0] {
 		case "mode":
-			if keyValue[1] != "retro" && keyValue[1] != "ct" && keyValue[1] != "regular" {
+			if keyValue[1] != "rt" && keyValue[1] != "ct" && keyValue[1] != "vanilla" {
 				return "", 0, false
 			}
 			mode = keyValue[1]

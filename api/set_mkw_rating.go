@@ -17,7 +17,7 @@ const (
 )
 
 var (
-	ErrRatingType  = errors.New("rating type must be either 'vr', 'br', 'mmr', 'mmr_retro', 'mmr_ct', or 'mmr_regular'")
+	ErrRatingType  = errors.New("rating type must be either 'vr', 'br', 'mmr', 'mmr_rt', 'mmr_ct', or 'mmr_vanilla'")
 	ErrRatingValue = errors.New("rating value must be between 100 and 1000000")
 	ErrMMRValue    = errors.New("MMR value must be between 100 and 30000")
 )
@@ -37,9 +37,9 @@ type SetMKWRatingResponse struct {
 	Value         int32         `json:"value"`
 	VR            int32         `json:"vr"`
 	BR            int32         `json:"br"`
-	MMRRetro      int32         `json:"mmr_retro"`
+	MMRRT         int32         `json:"mmr_rt"`
 	MMRCT         int32         `json:"mmr_ct"`
-	MMRRegular    int32         `json:"mmr_regular"`
+	MMRVanilla    int32         `json:"mmr_vanilla"`
 	Success       bool          `json:"success"`
 	Error         string        `json:"error"`
 }
@@ -60,7 +60,7 @@ func handleSetMKWRatingImpl(req SetMKWRatingRequest) (SetMKWRatingResponse, int,
 
 	ratingType := strings.ToLower(strings.TrimSpace(req.RatingType))
 	if ratingType != "vr" && ratingType != "br" && ratingType != "mmr" &&
-		ratingType != "mmr_retro" && ratingType != "mmr_ct" && ratingType != "mmr_regular" {
+		ratingType != "mmr_rt" && ratingType != "mmr_ct" && ratingType != "mmr_vanilla" {
 		return SetMKWRatingResponse{}, http.StatusBadRequest, ErrRatingType
 	}
 
@@ -74,9 +74,9 @@ func handleSetMKWRatingImpl(req SetMKWRatingRequest) (SetMKWRatingResponse, int,
 
 	currentVR := int32(defaultMKWManualRating)
 	currentBR := int32(defaultMKWManualRating)
-	currentMMRRetro := int32(defaultMKWManualRating)
+	currentMMRRT := int32(defaultMKWManualRating)
 	currentMMRCT := int32(defaultMKWManualRating)
-	currentMMRRegular := int32(defaultMKWManualRating)
+	currentMMRVanilla := int32(defaultMKWManualRating)
 
 	storedVR, storedBR, err := database.GetMKWRawVRBR(pool, ctx, req.ProfileID)
 	if err != nil {
@@ -91,10 +91,10 @@ func handleSetMKWRatingImpl(req SetMKWRatingRequest) (SetMKWRatingResponse, int,
 		currentBR = *storedBR
 	}
 
-	if storedRetro, storedCT, storedRegular, found := database.GetMKWMMRs(pool, ctx, req.ProfileID); found {
-		currentMMRRetro = storedRetro
+	if storedRT, storedCT, storedVanilla, found := database.GetMKWMMRs(pool, ctx, req.ProfileID); found {
+		currentMMRRT = storedRT
 		currentMMRCT = storedCT
-		currentMMRRegular = storedRegular
+		currentMMRVanilla = storedVanilla
 	}
 
 	reason := strings.TrimSpace(req.Reason)
@@ -108,19 +108,19 @@ func handleSetMKWRatingImpl(req SetMKWRatingRequest) (SetMKWRatingResponse, int,
 		previousValue = currentBR
 		currentBR = req.Value
 	case "mmr":
-		previousValue = currentMMRRetro
-		currentMMRRetro = req.Value
+		previousValue = currentMMRRT
+		currentMMRRT = req.Value
 		currentMMRCT = req.Value
-		currentMMRRegular = req.Value
-	case "mmr_retro":
-		previousValue = currentMMRRetro
-		currentMMRRetro = req.Value
+		currentMMRVanilla = req.Value
+	case "mmr_rt":
+		previousValue = currentMMRRT
+		currentMMRRT = req.Value
 	case "mmr_ct":
 		previousValue = currentMMRCT
 		currentMMRCT = req.Value
-	case "mmr_regular":
-		previousValue = currentMMRRegular
-		currentMMRRegular = req.Value
+	case "mmr_vanilla":
+		previousValue = currentMMRVanilla
+		currentMMRVanilla = req.Value
 	}
 
 	var updateErr error
@@ -161,8 +161,8 @@ func handleSetMKWRatingImpl(req SetMKWRatingRequest) (SetMKWRatingResponse, int,
 		Value:         req.Value,
 		VR:            currentVR,
 		BR:            currentBR,
-		MMRRetro:      currentMMRRetro,
+		MMRRT:         currentMMRRT,
 		MMRCT:         currentMMRCT,
-		MMRRegular:    currentMMRRegular,
+		MMRVanilla:    currentMMRVanilla,
 	}, http.StatusOK, nil
 }

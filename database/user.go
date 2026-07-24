@@ -38,9 +38,9 @@ const (
 	UpdateMKWVRBRQuery       = `UPDATE users SET mariokartwii_vr = $2, mariokartwii_br = $3 WHERE profile_id = $1`
 	GetMKWMMRQuery           = `SELECT COALESCE(mariokartwii_mmr_retro, mariokartwii_mmr, 0), COALESCE(mariokartwii_mmr_ct, mariokartwii_mmr, 0), COALESCE(mariokartwii_mmr_regular, mariokartwii_mmr, 0), (mariokartwii_mmr_retro IS NOT NULL OR mariokartwii_mmr_ct IS NOT NULL OR mariokartwii_mmr_regular IS NOT NULL OR mariokartwii_mmr IS NOT NULL) FROM users WHERE profile_id = $1`
 	UpdateMKWMMRQuery        = `UPDATE users SET mariokartwii_mmr = $2, mariokartwii_mmr_retro = $2, mariokartwii_mmr_ct = $2, mariokartwii_mmr_regular = $2 WHERE profile_id = $1`
-	UpdateMKWMMRRetroQuery   = `UPDATE users SET mariokartwii_mmr_retro = $2 WHERE profile_id = $1`
+	UpdateMKWMMRRTQuery      = `UPDATE users SET mariokartwii_mmr_retro = $2 WHERE profile_id = $1`
 	UpdateMKWMMRCTQuery      = `UPDATE users SET mariokartwii_mmr_ct = $2 WHERE profile_id = $1`
-	UpdateMKWMMRRegularQuery = `UPDATE users SET mariokartwii_mmr_regular = $2 WHERE profile_id = $1`
+	UpdateMKWMMRVanillaQuery = `UPDATE users SET mariokartwii_mmr_regular = $2 WHERE profile_id = $1`
 )
 
 type LinkStage byte
@@ -362,22 +362,22 @@ func UpdateMKWVRBR(pool *pgxpool.Pool, ctx context.Context, profileId uint32, vr
 }
 
 func GetMKWMMRs(pool *pgxpool.Pool, ctx context.Context, profileId uint32) (int32, int32, int32, bool) {
-	var retro int32
+	var rt int32
 	var ct int32
-	var regular int32
+	var vanilla int32
 	var found bool
 
-	err := pool.QueryRow(ctx, GetMKWMMRQuery, profileId).Scan(&retro, &ct, &regular, &found)
+	err := pool.QueryRow(ctx, GetMKWMMRQuery, profileId).Scan(&rt, &ct, &vanilla, &found)
 	if err != nil {
 		return 0, 0, 0, false
 	}
 
-	return retro, ct, regular, found
+	return rt, ct, vanilla, found
 }
 
 func GetMKWMMR(pool *pgxpool.Pool, ctx context.Context, profileId uint32) (int32, bool) {
-	retro, _, _, found := GetMKWMMRs(pool, ctx, profileId)
-	return retro, found
+	rt, _, _, found := GetMKWMMRs(pool, ctx, profileId)
+	return rt, found
 }
 
 func updateMKWMMRQuery(pool *pgxpool.Pool, ctx context.Context, query string, profileId uint32, mmr int32) error {
@@ -398,12 +398,12 @@ func UpdateMKWMMR(pool *pgxpool.Pool, ctx context.Context, profileId uint32, mmr
 func UpdateMKWMMRMode(pool *pgxpool.Pool, ctx context.Context, profileId uint32, mode string, mmr int32) error {
 	query := ""
 	switch mode {
-	case "retro":
-		query = UpdateMKWMMRRetroQuery
+	case "rt":
+		query = UpdateMKWMMRRTQuery
 	case "ct":
 		query = UpdateMKWMMRCTQuery
-	case "regular":
-		query = UpdateMKWMMRRegularQuery
+	case "vanilla":
+		query = UpdateMKWMMRVanillaQuery
 	default:
 		return ErrInvalidMKWMMRMode
 	}
