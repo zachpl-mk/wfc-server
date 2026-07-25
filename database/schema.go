@@ -48,6 +48,40 @@ func UpdateTables(pool *pgxpool.Pool, ctx context.Context) {
 
 	pool.Exec(ctx, `
 
+	CREATE TABLE IF NOT EXISTS public.mkw_mmr_seasons (
+		profile_id bigint NOT NULL,
+		season integer NOT NULL,
+		mmr_rt integer NOT NULL,
+		mmr_ct integer NOT NULL,
+		mmr_vanilla integer NOT NULL,
+		PRIMARY KEY (profile_id, season)
+	);
+
+	CREATE TABLE IF NOT EXISTS public.mkw_mmr_settings (
+		id boolean PRIMARY KEY DEFAULT true CHECK (id),
+		current_season integer NOT NULL
+	);
+
+	INSERT INTO public.mkw_mmr_settings (id, current_season)
+	VALUES (true, 1)
+	ON CONFLICT (id) DO NOTHING;
+
+	INSERT INTO public.mkw_mmr_seasons (profile_id, season, mmr_rt, mmr_ct, mmr_vanilla)
+	SELECT profile_id, 1,
+		COALESCE(mariokartwii_mmr_retro, mariokartwii_mmr, 1000),
+		COALESCE(mariokartwii_mmr_ct, mariokartwii_mmr, 1000),
+		COALESCE(mariokartwii_mmr_regular, mariokartwii_mmr, 1000)
+	FROM public.users
+	WHERE mariokartwii_mmr IS NOT NULL
+		OR mariokartwii_mmr_retro IS NOT NULL
+		OR mariokartwii_mmr_ct IS NOT NULL
+		OR mariokartwii_mmr_regular IS NOT NULL
+	ON CONFLICT (profile_id, season) DO NOTHING;
+
+	`)
+
+	pool.Exec(ctx, `
+
 	DO $$ 
 	BEGIN
     	IF (SELECT data_type FROM information_schema.columns WHERE table_name='users' AND column_name='ng_device_id') != 'ARRAY' THEN

@@ -36,11 +36,13 @@ const (
 	GetMKWVRBRQuery          = `SELECT COALESCE(mariokartwii_vr, 0), COALESCE(mariokartwii_br, 0), (mariokartwii_vr IS NOT NULL AND mariokartwii_br IS NOT NULL) FROM users WHERE profile_id = $1`
 	GetMKWRawVRBRQuery       = `SELECT mariokartwii_vr, mariokartwii_br FROM users WHERE profile_id = $1`
 	UpdateMKWVRBRQuery       = `UPDATE users SET mariokartwii_vr = $2, mariokartwii_br = $3 WHERE profile_id = $1`
-	GetMKWMMRQuery           = `SELECT COALESCE(mariokartwii_mmr_retro, mariokartwii_mmr, 0), COALESCE(mariokartwii_mmr_ct, mariokartwii_mmr, 0), COALESCE(mariokartwii_mmr_regular, mariokartwii_mmr, 0), (mariokartwii_mmr_retro IS NOT NULL OR mariokartwii_mmr_ct IS NOT NULL OR mariokartwii_mmr_regular IS NOT NULL OR mariokartwii_mmr IS NOT NULL) FROM users WHERE profile_id = $1`
-	UpdateMKWMMRQuery        = `UPDATE users SET mariokartwii_mmr = $2, mariokartwii_mmr_retro = $2, mariokartwii_mmr_ct = $2, mariokartwii_mmr_regular = $2 WHERE profile_id = $1`
-	UpdateMKWMMRRTQuery      = `UPDATE users SET mariokartwii_mmr_retro = $2 WHERE profile_id = $1`
-	UpdateMKWMMRCTQuery      = `UPDATE users SET mariokartwii_mmr_ct = $2 WHERE profile_id = $1`
-	UpdateMKWMMRVanillaQuery = `UPDATE users SET mariokartwii_mmr_regular = $2 WHERE profile_id = $1`
+	GetMKWMMRQuery           = `SELECT COALESCE(s.mmr_rt, 1000), COALESCE(s.mmr_ct, 1000), COALESCE(s.mmr_vanilla, 1000), true FROM users u LEFT JOIN mkw_mmr_seasons s ON s.profile_id = u.profile_id AND s.season = COALESCE((SELECT current_season FROM mkw_mmr_settings WHERE id = true), 1) WHERE u.profile_id = $1`
+	UpdateMKWMMRQuery        = `INSERT INTO mkw_mmr_seasons (profile_id, season, mmr_rt, mmr_ct, mmr_vanilla) SELECT $1, COALESCE((SELECT current_season FROM mkw_mmr_settings WHERE id = true), 1), $2, $2, $2 WHERE EXISTS (SELECT 1 FROM users WHERE profile_id = $1) ON CONFLICT (profile_id, season) DO UPDATE SET mmr_rt = EXCLUDED.mmr_rt, mmr_ct = EXCLUDED.mmr_ct, mmr_vanilla = EXCLUDED.mmr_vanilla`
+	UpdateMKWMMRRTQuery      = `INSERT INTO mkw_mmr_seasons (profile_id, season, mmr_rt, mmr_ct, mmr_vanilla) SELECT $1, COALESCE((SELECT current_season FROM mkw_mmr_settings WHERE id = true), 1), $2, 1000, 1000 WHERE EXISTS (SELECT 1 FROM users WHERE profile_id = $1) ON CONFLICT (profile_id, season) DO UPDATE SET mmr_rt = EXCLUDED.mmr_rt`
+	UpdateMKWMMRCTQuery      = `INSERT INTO mkw_mmr_seasons (profile_id, season, mmr_rt, mmr_ct, mmr_vanilla) SELECT $1, COALESCE((SELECT current_season FROM mkw_mmr_settings WHERE id = true), 1), 1000, $2, 1000 WHERE EXISTS (SELECT 1 FROM users WHERE profile_id = $1) ON CONFLICT (profile_id, season) DO UPDATE SET mmr_ct = EXCLUDED.mmr_ct`
+	UpdateMKWMMRVanillaQuery = `INSERT INTO mkw_mmr_seasons (profile_id, season, mmr_rt, mmr_ct, mmr_vanilla) SELECT $1, COALESCE((SELECT current_season FROM mkw_mmr_settings WHERE id = true), 1), 1000, 1000, $2 WHERE EXISTS (SELECT 1 FROM users WHERE profile_id = $1) ON CONFLICT (profile_id, season) DO UPDATE SET mmr_vanilla = EXCLUDED.mmr_vanilla`
+	GetMKWMMRSeasonQuery      = `SELECT current_season FROM mkw_mmr_settings WHERE id = true`
+	UpdateMKWMMRSeasonQuery   = `UPDATE mkw_mmr_settings SET current_season = $1 WHERE id = true`
 )
 
 type LinkStage byte
@@ -373,6 +375,17 @@ func GetMKWMMRs(pool *pgxpool.Pool, ctx context.Context, profileId uint32) (int3
 	}
 
 	return rt, ct, vanilla, found
+}
+
+func GetMKWMMRSeason(pool *pgxpool.Pool, ctx context.Context) (int32, error) {
+	var season int32
+	err := pool.QueryRow(ctx, GetMKWMMRSeasonQuery).Scan(&season)
+	return season, err
+}
+
+func UpdateMKWMMRSeason(pool *pgxpool.Pool, ctx context.Context, season int32) error {
+	_, err := pool.Exec(ctx, UpdateMKWMMRSeasonQuery, season)
+	return err
 }
 
 func GetMKWMMR(pool *pgxpool.Pool, ctx context.Context, profileId uint32) (int32, bool) {
