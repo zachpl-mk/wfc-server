@@ -2,6 +2,7 @@ package api
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 	"wwfc/database"
@@ -97,7 +98,6 @@ func handleSetMKWRatingImpl(req SetMKWRatingRequest) (SetMKWRatingResponse, int,
 		currentMMRVanilla = storedVanilla
 	}
 
-	reason := strings.TrimSpace(req.Reason)
 	previousValue := int32(0)
 
 	switch ratingType {
@@ -141,13 +141,15 @@ func handleSetMKWRatingImpl(req SetMKWRatingRequest) (SetMKWRatingResponse, int,
 	}
 
 	ratingLabel := strings.ToUpper(ratingType)
-	if strings.HasPrefix(ratingType, "mmr_") {
-		ratingLabel = "MMR"
+	switch ratingType {
+	case "mmr_rt":
+		ratingLabel = "MMR RT"
+	case "mmr_ct":
+		ratingLabel = "MMR CT"
+	case "mmr_vanilla":
+		ratingLabel = "MMR Vanilla"
 	}
-	kickReason := "Your " + ratingLabel + " was updated."
-	if reason != "" {
-		kickReason += " - " + reason
-	}
+	kickReason := ratingLabel + " has been updated to " + fmt.Sprint(req.Value) + "."
 
 	err = gpcm.KickPlayer(req.ProfileID, kickReason, gpcm.WWFCMsgKickedCustom)
 	if err != nil {

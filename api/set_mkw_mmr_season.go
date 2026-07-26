@@ -39,8 +39,10 @@ func handleSetMKWMMRSeasonImpl(req SetMKWMMRSeasonRequest) (SetMKWMMRSeasonRespo
 		return SetMKWMMRSeasonResponse{}, http.StatusInternalServerError, ErrTransaction
 	}
 
-	if err := database.UpdateMKWMMRSeason(pool, ctx, req.Season); err != nil {
-		return SetMKWMMRSeasonResponse{}, http.StatusInternalServerError, ErrTransaction
+	if previous != req.Season {
+		if err := database.UpdateMKWMMRSeason(pool, ctx, req.Season); err != nil {
+			return SetMKWMMRSeasonResponse{}, http.StatusInternalServerError, ErrTransaction
+		}
 	}
 
 	return SetMKWMMRSeasonResponse{PreviousSeason: previous, Season: req.Season, Success: true}, http.StatusOK, nil
